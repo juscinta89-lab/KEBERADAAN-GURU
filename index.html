@@ -1,1 +1,529 @@
-
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/index.html b/index.html
+index 8b137891791fe96927ad78e64b0aad7bded08bdc..7c05e48e92ddcfaedc0a73ff2d4c89a6d8e15958 100644
+--- a/index.html
++++ b/index.html
+@@ -1 +1,520 @@
++<!doctype html>
++<html lang="id">
++<head>
++  <meta charset="UTF-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
++  <title>Pantau Keberadaan Guru</title>
++  <style>
++    :root {
++      --bg: #f4f7fb;
++      --card: #fff;
++      --text: #1f2937;
++      --muted: #6b7280;
++      --primary: #2563eb;
++      --ok: #10b981;
++      --warn: #f59e0b;
++      --danger: #ef4444;
++      --border: #e5e7eb;
++    }
++    * { box-sizing: border-box; }
++    body {
++      margin: 0;
++      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
++      background: var(--bg);
++      color: var(--text);
++    }
++    header {
++      background: linear-gradient(135deg, #1d4ed8, #2563eb);
++      color: #fff;
++      padding: 1rem 1.25rem;
++      position: sticky;
++      top: 0;
++      z-index: 50;
++    }
++    header h1 { margin: 0; font-size: 1.15rem; }
++    header small { opacity: .92; }
++    .container {
++      max-width: 1200px;
++      margin: 1rem auto 2rem;
++      padding: 0 1rem;
++      display: grid;
++      gap: 1rem;
++    }
++    .grid-3 {
++      display: grid;
++      grid-template-columns: repeat(3, minmax(0, 1fr));
++      gap: 1rem;
++    }
++    .grid-2 {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 1rem;
++    }
++    .card {
++      background: var(--card);
++      border: 1px solid var(--border);
++      border-radius: 12px;
++      padding: 1rem;
++      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
++    }
++    .card h2 {
++      margin: 0 0 .75rem;
++      font-size: 1rem;
++      color: #111827;
++    }
++    .kpi {
++      font-size: 1.6rem;
++      font-weight: 700;
++      margin: .3rem 0;
++    }
++    .muted { color: var(--muted); font-size: .9rem; }
++    form {
++      display: grid;
++      gap: .5rem;
++      margin-bottom: .75rem;
++    }
++    input, select, button {
++      width: 100%;
++      border: 1px solid var(--border);
++      border-radius: 8px;
++      padding: .6rem .7rem;
++      font: inherit;
++      background: #fff;
++    }
++    button {
++      background: var(--primary);
++      color: white;
++      border: none;
++      cursor: pointer;
++      font-weight: 600;
++    }
++    button.secondary { background: #111827; }
++    button.warn { background: var(--warn); color: #111827; }
++    button.ghost {
++      background: #fff;
++      color: #111827;
++      border: 1px solid var(--border);
++    }
++    table {
++      width: 100%;
++      border-collapse: collapse;
++      font-size: .9rem;
++    }
++    th, td {
++      border-bottom: 1px solid var(--border);
++      text-align: left;
++      padding: .55rem;
++      vertical-align: top;
++    }
++    th { background: #f8fafc; }
++    .badge {
++      display: inline-block;
++      border-radius: 999px;
++      padding: .2rem .6rem;
++      font-size: .78rem;
++      font-weight: 700;
++    }
++    .hadir { background: #dcfce7; color: #166534; }
++    .terlambat { background: #fef3c7; color: #92400e; }
++    .tidakhadir { background: #fee2e2; color: #991b1b; }
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: .5rem;
++    }
++    .stack { display: grid; gap: .6rem; }
++    .toolbar { display: flex; gap: .5rem; flex-wrap: wrap; }
++    .toolbar > * { flex: 1; min-width: 140px; }
++    @media (max-width: 900px) {
++      .grid-3, .grid-2 { grid-template-columns: 1fr; }
++    }
++  </style>
++</head>
++<body>
++<header>
++  <h1>📍 Aplikasi Pantau Keberadaan Guru</h1>
++  <small id="clock">Memuat waktu...</small>
++</header>
+ 
++<main class="container">
++  <section class="grid-3">
++    <article class="card">
++      <h2>Guru Aktif Hari Ini</h2>
++      <div class="kpi" id="kpiGuru">0</div>
++      <div class="muted">Jumlah guru yang sedang mengajar / sudah check-in hari ini.</div>
++    </article>
++    <article class="card">
++      <h2>Kelas Berjalan Sekarang</h2>
++      <div class="kpi" id="kpiKelas">0</div>
++      <div class="muted">Sesi kelas sesuai jam saat ini.</div>
++    </article>
++    <article class="card">
++      <h2>Total Sesi Hari Ini</h2>
++      <div class="kpi" id="kpiSesi">0</div>
++      <div class="muted">Dari seluruh kelas dan matapelajaran.</div>
++    </article>
++  </section>
++
++  <section class="grid-2">
++    <article class="card stack">
++      <h2>Master Data Guru</h2>
++      <form id="teacherForm">
++        <input id="teacherName" placeholder="Nama guru" required />
++        <input id="teacherNip" placeholder="NIP / ID Guru" required />
++        <button type="submit">Tambah Guru</button>
++      </form>
++      <div class="muted">Data tersimpan di browser (localStorage).</div>
++      <table>
++        <thead><tr><th>Nama</th><th>NIP</th></tr></thead>
++        <tbody id="teacherTable"></tbody>
++      </table>
++    </article>
++
++    <article class="card stack">
++      <h2>Master Kelas & Matapelajaran</h2>
++      <form id="classForm">
++        <input id="className" placeholder="Contoh: X IPA 1" required />
++        <input id="subjectName" placeholder="Matapelajaran" required />
++        <button type="submit">Tambah Kelas + Mapel</button>
++      </form>
++      <table>
++        <thead><tr><th>Kelas</th><th>Mapel</th></tr></thead>
++        <tbody id="classTable"></tbody>
++      </table>
++    </article>
++  </section>
++
++  <section class="card stack">
++    <h2>Jadwal Mengajar</h2>
++    <form id="scheduleForm" class="grid-3">
++      <select id="scheduleTeacher" required></select>
++      <select id="scheduleClass" required></select>
++      <input id="scheduleDate" type="date" required />
++      <input id="scheduleStart" type="time" required />
++      <input id="scheduleEnd" type="time" required />
++      <button type="submit">Simpan Jadwal</button>
++    </form>
++    <table>
++      <thead>
++        <tr>
++          <th>Tanggal</th>
++          <th>Guru</th>
++          <th>Kelas</th>
++          <th>Mapel</th>
++          <th>Waktu</th>
++          <th>Status</th>
++          <th>Aksi</th>
++        </tr>
++      </thead>
++      <tbody id="scheduleTable"></tbody>
++    </table>
++  </section>
++
++  <section class="card stack">
++    <h2>Monitoring Real-time</h2>
++    <div class="muted">Klik tombol status untuk update kondisi kehadiran secara langsung.</div>
++    <table>
++      <thead>
++      <tr>
++        <th>Waktu Update</th>
++        <th>Guru</th>
++        <th>Kelas</th>
++        <th>Mapel</th>
++        <th>Status</th>
++      </tr>
++      </thead>
++      <tbody id="liveTable"></tbody>
++    </table>
++  </section>
++
++  <section class="card stack">
++    <h2>Rumusan Harian / Bulanan / Tahunan</h2>
++    <div class="toolbar">
++      <select id="reportType">
++        <option value="daily">Harian</option>
++        <option value="monthly">Bulanan</option>
++        <option value="yearly">Tahunan</option>
++      </select>
++      <input id="reportDate" type="date" />
++      <button id="generateReport" type="button">Buat Rumusan</button>
++      <button id="downloadCsv" class="secondary" type="button">Download CSV</button>
++      <button id="downloadJson" class="ghost" type="button">Download JSON</button>
++    </div>
++    <table>
++      <thead>
++      <tr>
++        <th>Guru</th>
++        <th>Kelas</th>
++        <th>Mapel</th>
++        <th>Total Sesi</th>
++        <th>Hadir</th>
++        <th>Terlambat</th>
++        <th>Tidak Hadir</th>
++      </tr>
++      </thead>
++      <tbody id="reportTable"></tbody>
++    </table>
++  </section>
++</main>
++
++<script>
++  const KEY = 'app-keberadaan-guru-v1';
++  const state = JSON.parse(localStorage.getItem(KEY) || '{"teachers":[],"classes":[],"schedules":[],"liveLogs":[]}');
++  const today = () => new Date().toISOString().slice(0,10);
++
++  const el = id => document.getElementById(id);
++  el('scheduleDate').value = today();
++  el('reportDate').value = today();
++
++  function save() {
++    localStorage.setItem(KEY, JSON.stringify(state));
++  }
++
++  function makeId(prefix) {
++    return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2,8)}`;
++  }
++
++  function teacherById(id) { return state.teachers.find(t => t.id === id); }
++  function classById(id) { return state.classes.find(c => c.id === id); }
++
++  function badge(status) {
++    const map = { HADIR: 'hadir', TERLAMBAT: 'terlambat', TIDAK_HADIR: 'tidakhadir' };
++    const text = status.replace('_',' ');
++    return `<span class="badge ${map[status] || ''}">${text}</span>`;
++  }
++
++  function refreshSelects() {
++    const tSel = el('scheduleTeacher');
++    const cSel = el('scheduleClass');
++    tSel.innerHTML = state.teachers.length
++      ? state.teachers.map(t => `<option value="${t.id}">${t.name} (${t.nip})</option>`).join('')
++      : '<option value="">Belum ada guru</option>';
++    cSel.innerHTML = state.classes.length
++      ? state.classes.map(c => `<option value="${c.id}">${c.className} - ${c.subject}</option>`).join('')
++      : '<option value="">Belum ada kelas</option>';
++  }
++
++  function renderMasters() {
++    el('teacherTable').innerHTML = state.teachers.map(t => `<tr><td>${t.name}</td><td>${t.nip}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Belum ada data guru.</td></tr>';
++    el('classTable').innerHTML = state.classes.map(c => `<tr><td>${c.className}</td><td>${c.subject}</td></tr>`).join('') || '<tr><td colspan="2" class="muted">Belum ada data kelas/mapel.</td></tr>';
++    refreshSelects();
++  }
++
++  function currentStatus(schedule) {
++    const logs = state.liveLogs.filter(l => l.scheduleId === schedule.id);
++    return logs.length ? logs[logs.length - 1].status : 'TIDAK_HADIR';
++  }
++
++  function isNowInSession(schedule) {
++    const now = new Date();
++    const date = now.toISOString().slice(0,10);
++    if (schedule.date !== date) return false;
++    const hm = now.toTimeString().slice(0,5);
++    return hm >= schedule.start && hm <= schedule.end;
++  }
++
++  function renderSchedules() {
++    const rows = [...state.schedules].sort((a,b) => `${a.date} ${a.start}`.localeCompare(`${b.date} ${b.start}`));
++    el('scheduleTable').innerHTML = rows.map(s => {
++      const t = teacherById(s.teacherId);
++      const c = classById(s.classId);
++      return `<tr>
++        <td>${s.date}</td>
++        <td>${t ? t.name : '-'}</td>
++        <td>${c ? c.className : '-'}</td>
++        <td>${c ? c.subject : '-'}</td>
++        <td>${s.start} - ${s.end}</td>
++        <td>${badge(currentStatus(s))}</td>
++        <td>
++          <div class="actions">
++            <button class="ghost" onclick="setStatus('${s.id}','HADIR')">Hadir</button>
++            <button class="warn" onclick="setStatus('${s.id}','TERLAMBAT')">Terlambat</button>
++            <button class="secondary" onclick="setStatus('${s.id}','TIDAK_HADIR')">Tidak Hadir</button>
++          </div>
++        </td>
++      </tr>`;
++    }).join('') || '<tr><td colspan="7" class="muted">Belum ada jadwal.</td></tr>';
++
++    const todaySchedules = state.schedules.filter(s => s.date === today());
++    const activeTeachers = new Set(state.liveLogs.filter(l => l.date === today()).map(l => l.teacherId));
++    el('kpiGuru').textContent = activeTeachers.size;
++    el('kpiKelas').textContent = state.schedules.filter(isNowInSession).length;
++    el('kpiSesi').textContent = todaySchedules.length;
++  }
++
++  window.setStatus = function(scheduleId, status) {
++    const schedule = state.schedules.find(s => s.id === scheduleId);
++    if (!schedule) return;
++    state.liveLogs.push({
++      id: makeId('log'),
++      scheduleId,
++      teacherId: schedule.teacherId,
++      classId: schedule.classId,
++      status,
++      date: schedule.date,
++      timestamp: new Date().toISOString()
++    });
++    save();
++    renderSchedules();
++    renderLive();
++    generateReport();
++  }
++
++  function renderLive() {
++    const logs = [...state.liveLogs].sort((a,b) => b.timestamp.localeCompare(a.timestamp)).slice(0, 50);
++    el('liveTable').innerHTML = logs.map(l => {
++      const s = state.schedules.find(x => x.id === l.scheduleId);
++      const t = teacherById(l.teacherId);
++      const c = classById(l.classId);
++      return `<tr>
++        <td>${new Date(l.timestamp).toLocaleString('id-ID')}</td>
++        <td>${t ? t.name : '-'}</td>
++        <td>${c ? c.className : '-'}</td>
++        <td>${c ? c.subject : '-'}</td>
++        <td>${badge(l.status)}</td>
++      </tr>`;
++    }).join('') || '<tr><td colspan="5" class="muted">Belum ada update real-time.</td></tr>';
++  }
++
++  function inPeriod(dateStr, type, baseDate) {
++    if (type === 'daily') return dateStr === baseDate;
++    if (type === 'monthly') return dateStr.slice(0,7) === baseDate.slice(0,7);
++    if (type === 'yearly') return dateStr.slice(0,4) === baseDate.slice(0,4);
++    return false;
++  }
++
++  let latestReport = [];
++
++  function generateReport() {
++    const type = el('reportType').value;
++    const baseDate = el('reportDate').value || today();
++    const bucket = new Map();
++
++    state.schedules.filter(s => inPeriod(s.date, type, baseDate)).forEach(s => {
++      const key = `${s.teacherId}|${s.classId}`;
++      if (!bucket.has(key)) {
++        bucket.set(key, {
++          teacherId: s.teacherId,
++          classId: s.classId,
++          subject: classById(s.classId)?.subject || '-',
++          totalSesi: 0,
++          hadir: 0,
++          terlambat: 0,
++          tidakHadir: 0,
++        });
++      }
++      const rec = bucket.get(key);
++      rec.totalSesi += 1;
++      const logs = state.liveLogs.filter(l => l.scheduleId === s.id);
++      const finalStatus = logs.length ? logs[logs.length - 1].status : 'TIDAK_HADIR';
++      if (finalStatus === 'HADIR') rec.hadir += 1;
++      if (finalStatus === 'TERLAMBAT') rec.terlambat += 1;
++      if (finalStatus === 'TIDAK_HADIR') rec.tidakHadir += 1;
++    });
++
++    latestReport = [...bucket.values()].map(r => ({
++      guru: teacherById(r.teacherId)?.name || '-',
++      nip: teacherById(r.teacherId)?.nip || '-',
++      kelas: classById(r.classId)?.className || '-',
++      mapel: r.subject,
++      totalSesi: r.totalSesi,
++      hadir: r.hadir,
++      terlambat: r.terlambat,
++      tidakHadir: r.tidakHadir,
++      periode: type,
++      tanggalAcuan: baseDate
++    }));
++
++    el('reportTable').innerHTML = latestReport.map(r => `<tr>
++      <td>${r.guru}</td>
++      <td>${r.kelas}</td>
++      <td>${r.mapel}</td>
++      <td>${r.totalSesi}</td>
++      <td>${r.hadir}</td>
++      <td>${r.terlambat}</td>
++      <td>${r.tidakHadir}</td>
++    </tr>`).join('') || '<tr><td colspan="7" class="muted">Tidak ada data pada periode ini.</td></tr>';
++  }
++
++  function downloadFile(filename, content, type) {
++    const blob = new Blob([content], { type });
++    const url = URL.createObjectURL(blob);
++    const a = document.createElement('a');
++    a.href = url;
++    a.download = filename;
++    a.click();
++    URL.revokeObjectURL(url);
++  }
++
++  function reportToCsv(rows) {
++    const headers = ['guru','nip','kelas','mapel','totalSesi','hadir','terlambat','tidakHadir','periode','tanggalAcuan'];
++    const lines = [headers.join(',')];
++    rows.forEach(r => {
++      lines.push(headers.map(h => `"${String(r[h] ?? '').replaceAll('"','""')}"`).join(','));
++    });
++    return lines.join('\n');
++  }
++
++  el('teacherForm').addEventListener('submit', e => {
++    e.preventDefault();
++    state.teachers.push({ id: makeId('t'), name: el('teacherName').value.trim(), nip: el('teacherNip').value.trim() });
++    e.target.reset();
++    save();
++    renderMasters();
++  });
++
++  el('classForm').addEventListener('submit', e => {
++    e.preventDefault();
++    state.classes.push({ id: makeId('c'), className: el('className').value.trim(), subject: el('subjectName').value.trim() });
++    e.target.reset();
++    save();
++    renderMasters();
++  });
++
++  el('scheduleForm').addEventListener('submit', e => {
++    e.preventDefault();
++    if (!state.teachers.length || !state.classes.length) {
++      alert('Isi dulu data guru dan kelas/mapel.');
++      return;
++    }
++    state.schedules.push({
++      id: makeId('s'),
++      teacherId: el('scheduleTeacher').value,
++      classId: el('scheduleClass').value,
++      date: el('scheduleDate').value,
++      start: el('scheduleStart').value,
++      end: el('scheduleEnd').value
++    });
++    save();
++    renderSchedules();
++    generateReport();
++    e.target.reset();
++    el('scheduleDate').value = today();
++  });
++
++  el('generateReport').addEventListener('click', generateReport);
++
++  el('downloadCsv').addEventListener('click', () => {
++    generateReport();
++    downloadFile(`rumusan-${el('reportType').value}-${el('reportDate').value || today()}.csv`, reportToCsv(latestReport), 'text/csv');
++  });
++
++  el('downloadJson').addEventListener('click', () => {
++    generateReport();
++    downloadFile(`rumusan-${el('reportType').value}-${el('reportDate').value || today()}.json`, JSON.stringify(latestReport, null, 2), 'application/json');
++  });
++
++  function tickClock() {
++    el('clock').textContent = `Waktu sekarang: ${new Date().toLocaleString('id-ID')} (monitoring real-time aktif)`;
++  }
++
++  tickClock();
++  setInterval(tickClock, 1000);
++
++  renderMasters();
++  renderSchedules();
++  renderLive();
++  generateReport();
++</script>
++</body>
++</html>
+ 
+EOF
+)
